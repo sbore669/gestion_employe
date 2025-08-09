@@ -1,7 +1,9 @@
 package com.icprecrutement.employer.controller;
 
 import com.icprecrutement.employer.entity.Employee;
+import com.icprecrutement.employer.entity.EmployeeHistory;
 import com.icprecrutement.employer.service.EmployeeService;
+import com.icprecrutement.employer.service.EmployeeHistoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,6 +18,7 @@ import java.util.List;
 public class EmployeeController {
     
     private final EmployeeService employeeService;
+    private final EmployeeHistoryService historyService;
     
     @GetMapping
     public ResponseEntity<List<Employee>> getAllEmployees() {
@@ -30,7 +33,7 @@ public class EmployeeController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
-    @PostMapping
+    @PostMapping("/add")
     public ResponseEntity<?> createEmployee(@Valid @RequestBody Employee employee) {
         try {
             Employee createdEmployee = employeeService.createEmployee(employee);
@@ -77,5 +80,23 @@ public class EmployeeController {
     public ResponseEntity<List<Employee>> getEmployeesByPoste(@PathVariable String poste) {
         List<Employee> employees = employeeService.getEmployeesByPoste(poste);
         return ResponseEntity.ok(employees);
+    }
+    
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<EmployeeHistory>> getEmployeeHistory(@PathVariable Long id) {
+        List<EmployeeHistory> history = historyService.getEmployeeHistory(id);
+        return ResponseEntity.ok(history);
+    }
+    
+    @GetMapping("/history")
+    public ResponseEntity<List<EmployeeHistory>> getAllEmployeesHistory() {
+        List<EmployeeHistory> history = historyService.getAllHistory();
+        return ResponseEntity.ok(history);
+    }
+    
+    @GetMapping("/history/user/{username}")
+    public ResponseEntity<List<EmployeeHistory>> getHistoryByUser(@PathVariable String username) {
+        List<EmployeeHistory> history = historyService.getHistoryByUser(username);
+        return ResponseEntity.ok(history);
     }
 }

@@ -11,58 +11,81 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class EmployeeService {
-    
+
     private final EmployeeRepository employeeRepository;
-    
+    private final EmployeeHistoryService historyService;
+
     public List<Employee> getAllEmployees() {
         return employeeRepository.findAll();
     }
-    
+
     public Optional<Employee> getEmployeeById(Long id) {
         return employeeRepository.findById(id);
     }
-    
+
     public Employee createEmployee(Employee employee) {
         if (employeeRepository.existsByEmail(employee.getEmail())) {
             throw new RuntimeException("Un employé avec cet email existe déjà");
         }
-        return employeeRepository.save(employee);
+        Employee savedEmployee = employeeRepository.save(employee);
+
+        // Sauvegarder l'historique de création
+        historyService.saveCreateHistory(savedEmployee);
+
+        return savedEmployee;
     }
-    
+
     public Employee updateEmployee(Long id, Employee employeeDetails) {
-        Employee employee = employeeRepository.findById(id)
+        Employee oldEmployee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé avec l'id: " + id));
-        
+
+        // Créer une copie des anciennes données pour l'historique
+        Employee oldEmployeeCopy = new Employee();
+        oldEmployeeCopy.setId(oldEmployee.getId());
+        oldEmployeeCopy.setNom(oldEmployee.getNom());
+        oldEmployeeCopy.setPrenom(oldEmployee.getPrenom());
+        oldEmployeeCopy.setPoste(oldEmployee.getPoste());
+        oldEmployeeCopy.setEmail(oldEmployee.getEmail());
+        oldEmployeeCopy.setDateEmbauche(oldEmployee.getDateEmbauche());
+
         // Vérifier si l'email est déjà utilisé par un autre employé
-        if (!employee.getEmail().equals(employeeDetails.getEmail()) && 
-            employeeRepository.existsByEmail(employeeDetails.getEmail())) {
+        if (!oldEmployee.getEmail().equals(employeeDetails.getEmail()) &&
+                employeeRepository.existsByEmail(employeeDetails.getEmail())) {
             throw new RuntimeException("Un employé avec cet email existe déjà");
         }
-        
-        employee.setNom(employeeDetails.getNom());
-        employee.setPrenom(employeeDetails.getPrenom());
-        employee.setPoste(employeeDetails.getPoste());
-        employee.setEmail(employeeDetails.getEmail());
-        employee.setDateEmbauche(employeeDetails.getDateEmbauche());
-        
-        return employeeRepository.save(employee);
+
+        oldEmployee.setNom(employeeDetails.getNom());
+        oldEmployee.setPrenom(employeeDetails.getPrenom());
+        oldEmployee.setPoste(employeeDetails.getPoste());
+        oldEmployee.setEmail(employeeDetails.getEmail());
+        oldEmployee.setDateEmbauche(employeeDetails.getDateEmbauche());
+
+        Employee updatedEmployee = employeeRepository.save(oldEmployee);
+
+        // Sauvegarder l'historique de modification
+        historyService.saveUpdateHistory(oldEmployeeCopy, updatedEmployee);
+
+        return updatedEmployee;
     }
-    
+
     public void deleteEmployee(Long id) {
-        if (!employeeRepository.existsById(id)) {
-            throw new RuntimeException("Employé non trouvé avec l'id: " + id);
-        }
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employé non trouvé avec l'id: " + id));
+
+        // Sauvegarder l'historique de suppression avant de supprimer
+        historyService.saveDeleteHistory(employee);
+
         employeeRepository.deleteById(id);
     }
-    
+
     public List<Employee> searchByPrenom(String prenom) {
         return employeeRepository.findByPrenomContainingIgnoreCase(prenom);
     }
-    
+
     public List<Employee> searchByNom(String nom) {
         return employeeRepository.findByNomContainingIgnoreCase(nom);
     }
-    
+
     public List<Employee> getEmployeesByPoste(String poste) {
         return employeeRepository.findByPoste(poste);
     }
